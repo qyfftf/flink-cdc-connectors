@@ -52,7 +52,7 @@ import static org.apache.flink.cdc.common.pipeline.PipelineOptions.PIPELINE_LOCA
  */
 public class PipelineDef {
     private final SourceDef source;
-    private final SinkDef sink;
+    private final List<SinkDef> sink;
     private final List<RouteDef> routes;
     private final List<TransformDef> transforms;
     private final List<UdfDef> udfs;
@@ -61,7 +61,7 @@ public class PipelineDef {
 
     public PipelineDef(
             SourceDef source,
-            SinkDef sink,
+            List<SinkDef> sink,
             List<RouteDef> routes,
             List<TransformDef> transforms,
             List<UdfDef> udfs,
@@ -78,7 +78,7 @@ public class PipelineDef {
 
     public PipelineDef(
             SourceDef source,
-            SinkDef sink,
+            List<SinkDef> sink,
             List<RouteDef> routes,
             List<TransformDef> transforms,
             List<UdfDef> udfs,
@@ -90,7 +90,7 @@ public class PipelineDef {
         return source;
     }
 
-    public SinkDef getSink() {
+    public List<SinkDef> getSink() {
         return sink;
     }
 

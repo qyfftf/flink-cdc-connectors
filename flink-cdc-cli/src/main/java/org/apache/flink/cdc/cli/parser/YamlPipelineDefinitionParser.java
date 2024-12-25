@@ -142,13 +142,16 @@ public class YamlPipelineDefinitionParser implements PipelineDefinitionParser {
                                 SOURCE_KEY));
 
         // Sink is required
-        SinkDef sinkDef =
-                toSinkDef(
-                        checkNotNull(
-                                pipelineDefJsonNode.get(SINK_KEY),
-                                "Missing required field \"%s\" in pipeline definition",
-                                SINK_KEY),
-                        schemaChangeBehavior);
+        List<SinkDef> sinkDefs = new ArrayList<>();
+        Optional.ofNullable(pipelineDefJsonNode.get(SINK_KEY))
+                .ifPresent(
+                        node ->
+                                node.forEach(
+                                        sink ->
+                                                sinkDefs.add(
+                                                        toSinkDef(
+                                                                sink.get(SINK_KEY),
+                                                                schemaChangeBehavior))));
 
         // Transforms are optional
         List<TransformDef> transformDefs = new ArrayList<>();
@@ -169,7 +172,7 @@ public class YamlPipelineDefinitionParser implements PipelineDefinitionParser {
         pipelineConfig.addAll(userPipelineConfig);
 
         return new PipelineDef(
-                sourceDef, sinkDef, routeDefs, transformDefs, udfDefs, modelDefs, pipelineConfig);
+                sourceDef, sinkDefs, routeDefs, transformDefs, udfDefs, modelDefs, pipelineConfig);
     }
 
     private SourceDef toSourceDef(JsonNode sourceNode) {

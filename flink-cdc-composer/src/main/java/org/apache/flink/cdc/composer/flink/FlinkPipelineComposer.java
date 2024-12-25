@@ -26,6 +26,7 @@ import org.apache.flink.cdc.common.sink.DataSink;
 import org.apache.flink.cdc.composer.PipelineComposer;
 import org.apache.flink.cdc.composer.PipelineExecution;
 import org.apache.flink.cdc.composer.definition.PipelineDef;
+import org.apache.flink.cdc.composer.definition.SinkDef;
 import org.apache.flink.cdc.composer.flink.coordination.OperatorIDGenerator;
 import org.apache.flink.cdc.composer.flink.translator.DataSinkTranslator;
 import org.apache.flink.cdc.composer.flink.translator.DataSourceTranslator;
@@ -133,31 +134,32 @@ public class FlinkPipelineComposer implements PipelineComposer {
 
         // Build DataSink in advance as schema operator requires MetadataApplier
         DataSinkTranslator sinkTranslator = new DataSinkTranslator();
-        DataSink dataSink =
-                sinkTranslator.createDataSink(pipelineDef.getSink(), pipelineDefConfig, env);
+        for (SinkDef sinkDef : pipelineDef.getSink()) {
+            DataSink dataSink = sinkTranslator.createDataSink(sinkDef, pipelineDefConfig, env);
 
-        stream =
-                schemaOperatorTranslator.translate(
-                        stream,
-                        parallelism,
-                        dataSink.getMetadataApplier()
-                                .setAcceptedSchemaEvolutionTypes(
-                                        pipelineDef.getSink().getIncludedSchemaEvolutionTypes()),
-                        pipelineDef.getRoute());
+            DataStream<Event> forStream =
+                    schemaOperatorTranslator.translate(
+                            stream,
+                            parallelism,
+                            dataSink.getMetadataApplier()
+                                    .setAcceptedSchemaEvolutionTypes(
+                                            sinkDef.getIncludedSchemaEvolutionTypes()),
+                            pipelineDef.getRoute());
 
-        // Build Partitioner used to shuffle Event
-        PartitioningTranslator partitioningTranslator = new PartitioningTranslator();
-        stream =
-                partitioningTranslator.translate(
-                        stream,
-                        parallelism,
-                        parallelism,
-                        schemaOperatorIDGenerator.generate(),
-                        dataSink.getDataChangeEventHashFunctionProvider(parallelism));
+            // Build Partitioner used to shuffle Event
+            PartitioningTranslator partitioningTranslator = new PartitioningTranslator();
+            forStream =
+                    partitioningTranslator.translate(
+                            forStream,
+                            parallelism,
+                            parallelism,
+                            schemaOperatorIDGenerator.generate(),
+                            dataSink.getDataChangeEventHashFunctionProvider(parallelism));
 
-        // Build Sink Operator
-        sinkTranslator.translate(
-                pipelineDef.getSink(), stream, dataSink, schemaOperatorIDGenerator.generate());
+            // Build Sink Operator
+            sinkTranslator.translate(
+                    sinkDef, forStream, dataSink, schemaOperatorIDGenerator.generate());
+        }
 
         // Add framework JARs
         addFrameworkJars();
