@@ -168,7 +168,7 @@ public class YamlPipelineDefinitionParser implements PipelineDefinitionParser {
 
         // Merge user config into global config
         Configuration pipelineConfig = new Configuration();
-        pipelineConfig.addAll(globalPipelineConfig);
+        //pipelineConfig.addAll(globalPipelineConfig);
         pipelineConfig.addAll(userPipelineConfig);
 
         return new PipelineDef(

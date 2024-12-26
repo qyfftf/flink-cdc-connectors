@@ -54,8 +54,8 @@ public class FlinkEnvironmentUtils {
             return FlinkPipelineComposer.ofMiniCluster();
         }
         org.apache.flink.configuration.Configuration configuration =
-                org.apache.flink.configuration.Configuration.fromMap(flinkConfig.toMap());
-        SavepointRestoreSettings.toConfiguration(savepointSettings, configuration);
-        return FlinkPipelineComposer.ofRemoteCluster(configuration, additionalJars);
+                new org.apache.flink.configuration.Configuration();
+        //SavepointRestoreSettings.toConfiguration(savepointSettings, configuration);
+        return FlinkPipelineComposer.ofRunApplication(configuration, additionalJars);
     }
 }

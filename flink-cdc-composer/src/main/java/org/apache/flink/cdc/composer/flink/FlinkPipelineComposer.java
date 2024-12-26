@@ -78,6 +78,28 @@ public class FlinkPipelineComposer implements PipelineComposer {
         return new FlinkPipelineComposer(env, false);
     }
 
+    public static FlinkPipelineComposer ofRunApplication(
+            org.apache.flink.configuration.Configuration flinkConfig, List<Path> additionalJars) {
+        org.apache.flink.configuration.Configuration effectiveConfiguration =
+                new org.apache.flink.configuration.Configuration();
+        effectiveConfiguration.set(DeploymentOptions.TARGET,"yarn-application");
+        // Use "remote" as the default target
+        StreamExecutionEnvironment env = new StreamExecutionEnvironment(effectiveConfiguration);
+        additionalJars.forEach(
+                jarPath -> {
+                    try {
+                        FlinkEnvironmentUtils.addJar(env, jarPath.toUri().toURL());
+                    } catch (Exception e) {
+                        throw new RuntimeException(
+                                String.format(
+                                        "Unable to convert JAR path \"%s\" to URL when adding JAR to Flink environment",
+                                        jarPath),
+                                e);
+                    }
+                });
+        return new FlinkPipelineComposer(env, false);
+    }
+
     public static FlinkPipelineComposer ofMiniCluster() {
         return new FlinkPipelineComposer(
                 StreamExecutionEnvironment.getExecutionEnvironment(), true);
@@ -113,16 +135,6 @@ public class FlinkPipelineComposer implements PipelineComposer {
                         pipelineDef.getUdfs(),
                         pipelineDef.getModels());
 
-        // Schema operator
-        SchemaOperatorTranslator schemaOperatorTranslator =
-                new SchemaOperatorTranslator(
-                        schemaChangeBehavior,
-                        pipelineDefConfig.get(PipelineOptions.PIPELINE_SCHEMA_OPERATOR_UID),
-                        pipelineDefConfig.get(PipelineOptions.PIPELINE_SCHEMA_OPERATOR_RPC_TIMEOUT),
-                        pipelineDefConfig.get(PipelineOptions.PIPELINE_LOCAL_TIME_ZONE));
-        OperatorIDGenerator schemaOperatorIDGenerator =
-                new OperatorIDGenerator(schemaOperatorTranslator.getSchemaOperatorUid());
-
         // Build PostTransformOperator for processing Data Event
         stream =
                 transformTranslator.translatePostTransform(
@@ -134,7 +146,20 @@ public class FlinkPipelineComposer implements PipelineComposer {
 
         // Build DataSink in advance as schema operator requires MetadataApplier
         DataSinkTranslator sinkTranslator = new DataSinkTranslator();
-        for (SinkDef sinkDef : pipelineDef.getSink()) {
+        for (int i = 0; i < pipelineDef.getSink().size(); i++) {
+            // Schema operator
+            SchemaOperatorTranslator schemaOperatorTranslator =
+                    new SchemaOperatorTranslator(
+                            schemaChangeBehavior,
+                            pipelineDefConfig.get(PipelineOptions.PIPELINE_SCHEMA_OPERATOR_UID) + i,
+                            pipelineDefConfig.get(
+                                    PipelineOptions.PIPELINE_SCHEMA_OPERATOR_RPC_TIMEOUT),
+                            pipelineDefConfig.get(PipelineOptions.PIPELINE_LOCAL_TIME_ZONE));
+
+            OperatorIDGenerator schemaOperatorIDGenerator =
+                    new OperatorIDGenerator(schemaOperatorTranslator.getSchemaOperatorUid());
+
+            SinkDef sinkDef = pipelineDef.getSink().get(i);
             DataSink dataSink = sinkTranslator.createDataSink(sinkDef, pipelineDefConfig, env);
 
             DataStream<Event> forStream =

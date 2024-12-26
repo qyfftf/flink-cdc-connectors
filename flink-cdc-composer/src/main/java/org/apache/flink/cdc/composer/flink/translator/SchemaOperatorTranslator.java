@@ -90,7 +90,7 @@ public class SchemaOperatorTranslator {
                                 rpcTimeOut,
                                 schemaChangeBehavior,
                                 timezone));
-        stream.setParallelism(parallelism);
+        stream.uid(schemaOperatorUid).setParallelism(parallelism);
         return stream;
     }
 }
